@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Kimi 倒计时",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "identifier": "com.jinls.kimi-countdown",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -15,10 +15,10 @@
       {
         "label": "main",
         "title": "Kimi 倒计时",
-        "width": 400,
-        "height": 500,
-        "minWidth": 300,
-        "minHeight": 200,
+        "width": 430,
+        "height": 620,
+        "minWidth": 380,
+        "minHeight": 520,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
@@ -26,7 +26,7 @@
         "alwaysOnTop": true,
         "center": true,
         "visible": true,
-        "focus": false,
+        "focus": true,
         "skipTaskbar": false
       }
     ],

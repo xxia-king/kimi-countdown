@@ -1,104 +1,48 @@
 import { useState } from 'react';
-import { Trash2, Edit3, Bell, BellOff } from 'lucide-react';
+import { Bell, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { CountdownEvent, TimeParts } from '../types';
-import { formatDateTime } from '../utils/date';
 
-interface CountdownCardProps {
-  event: CountdownEvent;
-  time: TimeParts;
-  onEdit: (event: CountdownEvent) => void;
-  onDelete: (id: string) => void;
+interface Props { event: CountdownEvent; time: TimeParts; variant: 'featured' | 'compact'; onEdit: (event: CountdownEvent) => void; onDelete: (id: string) => void; }
+
+function formatTarget(date: string) {
+  return new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(date));
 }
 
-function TimeUnit({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="bg-white rounded-lg px-3 py-2 min-w-[52px] text-center shadow-sm border border-gray-100">
-        <span className="text-xl font-semibold text-primary tabular-nums">
-          {String(value).padStart(2, '0')}
-        </span>
-      </div>
-      <span className="text-xs text-text-secondary mt-1">{label}</span>
-    </div>
-  );
+function getClock(time?: TimeParts) {
+  const totalHours = Math.floor((time?.totalSeconds ?? 0) / 3600);
+  return {
+    hours: String(totalHours).padStart(2, '0'),
+    minutes: String(time?.minutes ?? 0).padStart(2, '0'),
+    seconds: String(time?.seconds ?? 0).padStart(2, '0'),
+  };
 }
 
-export function CountdownCard({ event, time, onEdit, onDelete }: CountdownCardProps) {
-  const [showDelete, setShowDelete] = useState(false);
-  const borderColor = event.color || '#1a1a2e';
+function ActionMenu({ event, onEdit, onDelete, inverted = false }: Omit<Props, 'time' | 'variant'> & { inverted?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  return <div className={`card-menu ${inverted ? 'inverted' : ''}`}>
+    <button className="menu-trigger" onClick={() => setOpen(!open)} aria-label="事件操作"><MoreHorizontal size={19} /></button>
+    {open && <div className="menu-popover"><button onClick={() => onEdit(event)}><Pencil size={14} />编辑事件</button><button className="danger" onClick={() => { setOpen(false); setConfirming(true); }}><Trash2 size={14} />删除事件</button></div>}
+    {confirming && <div className="delete-overlay" onClick={() => setConfirming(false)}><div className="delete-dialog" onClick={(e) => e.stopPropagation()}><span>DELETE EVENT</span><h3>删除“{event.title}”？</h3><p>这个倒计时及备注将被永久移除。</p><footer><button onClick={() => setConfirming(false)}>保留</button><button className="delete-confirm" onClick={() => onDelete(event.id)}>确认删除</button></footer></div></div>}
+  </div>;
+}
 
-  return (
-    <div
-      className={`bg-card rounded-xl p-4 shadow-sm border-l-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
-        time?.isOver ? 'animate-pulse-border' : ''
-      }`}
-      style={{ borderLeftColor: borderColor }}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-medium text-text truncate">{event.title}</h3>
-          <p className="text-sm text-text-secondary mt-0.5">{formatDateTime(event.targetDate)}</p>
-          {event.description && (
-            <p className="text-xs text-text-secondary mt-1 truncate">{event.description}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-1 ml-2 shrink-0">
-          {event.notifyBefore > 0 ? (
-            <Bell className="w-4 h-4 text-text-secondary" />
-          ) : (
-            <BellOff className="w-4 h-4 text-text-secondary/50" />
-          )}
-          <button
-            onClick={() => onEdit(event)}
-            className="p-1.5 rounded-md hover:bg-gray-100 text-text-secondary transition-colors"
-            title="编辑"
-          >
-            <Edit3 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setShowDelete(true)}
-            className="p-1.5 rounded-md hover:bg-red-50 text-text-secondary hover:text-red-500 transition-colors"
-            title="删除"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+export function CountdownCard({ event, time, variant, onEdit, onDelete }: Props) {
+  const style = { '--event-color': event.color || '#ff7051' } as React.CSSProperties;
+  const date = new Date(event.targetDate);
+  const clock = getClock(time);
+  if (variant === 'featured') return <article className="featured-card" style={style}>
+    <div className="featured-orb" />
+    <header><div><span className="overline">NEXT MOMENT</span><span className="target-chip">{formatTarget(event.targetDate)}</span></div><ActionMenu event={event} onEdit={onEdit} onDelete={onDelete} inverted /></header>
+    <div className="featured-copy"><p>{event.description || '下一个值得期待的时刻'}</p><h1>{event.title}</h1></div>
+    {time?.isOver ? <div className="arrived">时间已到</div> : <div className="hero-clock" aria-label={`${clock.hours}小时${clock.minutes}分钟${clock.seconds}秒`}><div><strong>{clock.hours}</strong><span>小时</span></div><i>:</i><div><strong>{clock.minutes}</strong><span>分钟</span></div><i>:</i><div><strong>{clock.seconds}</strong><span>秒钟</span></div></div>}
+    <footer><span className="date-index">{String(date.getMonth() + 1).padStart(2, '0')} / {String(date.getDate()).padStart(2, '0')}</span><span className="year">{date.getFullYear()}</span>{event.notifyBefore > 0 && <Bell size={14} />}</footer>
+  </article>;
 
-      {time?.isOver ? (
-        <div className="text-center py-2">
-          <span className="text-accent font-semibold text-lg">已到达！</span>
-        </div>
-      ) : (
-        <div className="flex justify-center gap-2 py-1">
-          {time && time.days > 0 && <TimeUnit value={time.days} label="天" />}
-          <TimeUnit value={time?.hours ?? 0} label="时" />
-          <TimeUnit value={time?.minutes ?? 0} label="分" />
-          <TimeUnit value={time?.seconds ?? 0} label="秒" />
-        </div>
-      )}
-
-      {showDelete && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowDelete(false)}>
-          <div className="bg-card rounded-xl p-5 max-w-xs w-full mx-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <p className="text-text text-center mb-4">确定要删除「{event.title}」吗？</p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => setShowDelete(false)}
-                className="px-4 py-2 rounded-lg bg-gray-100 text-text hover:bg-gray-200 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => { onDelete(event.id); setShowDelete(false); }}
-                className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-red-600 transition-colors"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <article className="compact-card" style={style}>
+    <div className="date-tile"><strong>{String(date.getDate()).padStart(2, '0')}</strong><span>{new Intl.DateTimeFormat('en', { month: 'short' }).format(date).toUpperCase()}</span></div>
+    <i className="timeline-dot" /><div className="compact-copy"><h2>{event.title}</h2><p>{event.description || formatTarget(event.targetDate)}</p></div>
+    <div className="compact-time">{time?.isOver ? <strong>已到达</strong> : <><strong>{clock.hours}:{clock.minutes}:{clock.seconds}</strong><span>时</span></>}</div>
+    <ActionMenu event={event} onEdit={onEdit} onDelete={onDelete} />
+  </article>;
 }

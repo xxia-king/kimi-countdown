@@ -1,15 +1,6 @@
-import { Timer } from 'lucide-react';
+import { ArrowUpRight, Plus } from 'lucide-react';
 
-export function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-        <Timer className="w-8 h-8 text-text-secondary" />
-      </div>
-      <h3 className="text-lg font-medium text-text mb-2">还没有倒计时</h3>
-      <p className="text-sm text-text-secondary max-w-xs">
-        点击右上角的「+」按钮，添加你的第一个倒计时事件吧！
-      </p>
-    </div>
-  );
+export function EmptyState({ onAddClick }: { onAddClick?: () => void }) {
+  const today = new Date();
+  return <section className="empty-state"><div className="empty-orb" /><span className="overline">YOUR MOMENTS</span><div className="empty-date"><strong>{String(today.getDate()).padStart(2, '0')}</strong><span>{new Intl.DateTimeFormat('en', { month: 'long' }).format(today).toUpperCase()}<br />{today.getFullYear()}</span></div><h1>期待，让时间<br />有了方向。</h1><p>把重要的日子放在这里。每一次打开，都知道自己正在靠近什么。</p>{onAddClick && <button onClick={onAddClick}><Plus size={17} />创建第一个倒计时<ArrowUpRight size={16} /></button>}</section>;
 }

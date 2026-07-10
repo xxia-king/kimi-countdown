@@ -35,7 +35,6 @@ export const PRESET_TEMPLATES = [
 ] as const;
 
 export const COLOR_PRESETS = [
-  '#e74c3c', '#e91e63', '#9b59b6', '#3498db',
-  '#1abc9c', '#27ae60', '#f39c12', '#e67e22',
-  '#e94560', '#1a1a2e', '#636e72', '#95a5a6',
+  '#FF7051', '#D79B6E', '#DDBB56', '#7A9B76',
+  '#4F8F88', '#557FA4', '#786F9D', '#B36B78',
 ];

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Plus, Download, Upload, X, Minus, Pin, PinOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Download, Hourglass, Minus, Pin, PinOff, Plus, Upload, X } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CountdownCard } from './components/CountdownCard';
 import { AddEventModal } from './components/AddEventModal';
 import { EmptyState } from './components/EmptyState';
@@ -12,135 +14,70 @@ function App() {
   const [editingEvent, setEditingEvent] = useState<CountdownEvent | null>(null);
   const [isPinned, setIsPinned] = useState(true);
 
-  const handleEdit = (event: CountdownEvent) => {
-    setEditingEvent(event);
-    setIsModalOpen(true);
+  const orderedEvents = useMemo(() => [...events].sort((a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()), [events]);
+  const featured = orderedEvents.find((event) => !times[event.id]?.isOver) ?? orderedEvents[0];
+  const remaining = orderedEvents.filter((event) => event.id !== featured?.id);
+
+  const openNewEvent = () => { setEditingEvent(null); setIsModalOpen(true); };
+  const openEditor = (event: CountdownEvent) => { setEditingEvent(event); setIsModalOpen(true); };
+  const closeModal = () => { setIsModalOpen(false); setEditingEvent(null); };
+  const saveEvent = (data: Omit<CountdownEvent, 'id' | 'createdAt' | 'updatedAt' | 'isFinished'>) => editingEvent ? updateEvent(editingEvent.id, data) : addEvent(data);
+
+  const togglePinned = async () => {
+    const next = !isPinned;
+    setIsPinned(next);
+    await invoke('set_always_on_top', { alwaysOnTop: next });
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingEvent(null);
-  };
-
-  const handleSave = (eventData: Omit<CountdownEvent, 'id' | 'createdAt' | 'updatedAt' | 'isFinished'>) => {
-    if (editingEvent) {
-      updateEvent(editingEvent.id, eventData);
-    } else {
-      addEvent(eventData);
-    }
-  };
-
-  const handleExport = () => {
-    const data = JSON.stringify(events, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+  const exportEvents = () => {
+    const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `countdown-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `countdown-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const importEvents = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = ({ target }) => {
       try {
-        const imported = JSON.parse(ev.target?.result as string) as CountdownEvent[];
-        if (Array.isArray(imported)) {
-          imported.forEach((item) => addEvent(item));
-        }
-      } catch {
-        alert('导入失败，请检查文件格式');
-      }
+        const imported = JSON.parse(target?.result as string) as CountdownEvent[];
+        if (!Array.isArray(imported)) throw new Error('Invalid backup');
+        imported.forEach(addEvent);
+      } catch { alert('导入失败，请选择由本应用导出的 JSON 备份。'); }
     };
     reader.readAsText(file);
-    e.target.value = '';
+    event.target.value = '';
   };
 
-  const togglePin = () => {
-    setIsPinned(!isPinned);
-  };
-
-  if (!loaded) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (!loaded) return <div className="app-loading"><span /></div>;
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col select-none">
-      {/* Custom Title Bar (drag region) */}
-      <div className="bg-card/90 backdrop-blur-sm border-b border-gray-100/50 flex items-center justify-between px-3 py-2" data-tauri-drag-region>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-white text-xs font-bold">K</span>
-          </div>
-          <h1 className="text-sm font-semibold text-primary">Kimi 倒计时</h1>
+    <div className="app-shell">
+      <header className="titlebar" data-tauri-drag-region>
+        <div className="brand" data-tauri-drag-region><span className="brand-symbol"><Hourglass size={15} /></span><strong>Moment</strong><span>倒计时</span></div>
+        <div className="window-actions">
+          <button onClick={togglePinned} title={isPinned ? '取消置顶' : '窗口置顶'}>{isPinned ? <Pin size={14} /> : <PinOff size={14} />}</button>
+          <button onClick={() => getCurrentWindow().minimize()} title="最小化"><Minus size={15} /></button>
+          <button className="close-window" onClick={() => getCurrentWindow().hide()} title="隐藏"><X size={15} /></button>
         </div>
-        <div className="flex items-center gap-0.5">
-          <button onClick={togglePin} className="p-1.5 rounded-md hover:bg-gray-100/80 transition-colors" title={isPinned ? '取消置顶' : '置顶'}>
-            {isPinned ? <Pin className="w-3.5 h-3.5 text-primary" /> : <PinOff className="w-3.5 h-3.5 text-text-secondary" />}
-          </button>
-          <button className="p-1.5 rounded-md hover:bg-gray-100/80 transition-colors" title="最小化">
-            <Minus className="w-3.5 h-3.5 text-text-secondary" />
-          </button>
-          <button className="p-1.5 rounded-md hover:bg-red-50 transition-colors" title="隐藏">
-            <X className="w-3.5 h-3.5 text-text-secondary hover:text-red-500" />
-          </button>
-        </div>
-      </div>
+      </header>
 
-      {/* Content */}
-      <main className="flex-1 px-3 py-3 overflow-y-auto">
-        {events.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="space-y-2.5">
-            {events.map((event) => (
-              <CountdownCard
-                key={event.id}
-                event={event}
-                time={times[event.id]}
-                onEdit={handleEdit}
-                onDelete={deleteEvent}
-              />
-            ))}
-          </div>
-        )}
+      <main className="content">
+        {featured ? <CountdownCard variant="featured" event={featured} time={times[featured.id]} onEdit={openEditor} onDelete={deleteEvent} /> : <EmptyState onAddClick={openNewEvent} />}
+
+        {featured && <section className="timeline-section">
+          <div className="section-heading"><div><span>UPCOMING</span><h1>接下来的日子</h1></div><button onClick={openNewEvent}><Plus size={16} />新建</button></div>
+          {remaining.length ? <div className="event-list">{remaining.map((item) => <CountdownCard key={item.id} variant="compact" event={item} time={times[item.id]} onEdit={openEditor} onDelete={deleteEvent} />)}</div> : <button className="add-another" onClick={openNewEvent}><Plus size={17} /><span>再添加一个值得期待的日子</span></button>}
+        </section>}
       </main>
 
-      {/* Bottom Bar */}
-      <div className="bg-card/90 backdrop-blur-sm border-t border-gray-100/50 px-3 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <label className="p-1.5 rounded-md hover:bg-gray-100/80 transition-colors cursor-pointer" title="导入">
-            <Upload className="w-3.5 h-3.5 text-text-secondary" />
-            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-          </label>
-          <button onClick={handleExport} className="p-1.5 rounded-md hover:bg-gray-100/80 transition-colors" title="导出">
-            <Download className="w-3.5 h-3.5 text-text-secondary" />
-          </button>
-        </div>
-        <span className="text-xs text-text-secondary">{events.length} 个事件</span>
-        <button
-          onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
-          className="p-1.5 rounded-md bg-primary hover:bg-secondary transition-colors"
-          title="添加倒计时"
-        >
-          <Plus className="w-3.5 h-3.5 text-white" />
-        </button>
-      </div>
-
-      {/* Modal */}
-      <AddEventModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onSave={handleSave}
-        editEvent={editingEvent}
-      />
+      <footer className="utility-bar"><span>{events.length} EVENTS</span><div><label title="导入备份"><Upload size={14} /><input type="file" accept=".json" onChange={importEvents} /></label><button onClick={exportEvents} title="导出备份"><Download size={14} /></button></div></footer>
+      <AddEventModal isOpen={isModalOpen} onClose={closeModal} onSave={saveEvent} editEvent={editingEvent} />
     </div>
   );
 }
