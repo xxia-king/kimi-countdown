@@ -2,6 +2,8 @@
 
 > 个人桌面倒计时工具——用精确到秒的流逝感,对抗拖延
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Kimi 倒计时是一款跨平台桌面倒计时应用:多事件管理、每秒刷新、窗口置顶、数据仅存本地。基于 Tauri 2 + React + TypeScript 构建,安装包小、内存占用低。
 
 ## 功能
@@ -47,4 +49,4 @@ Tauri 2 + React + TypeScript(Rust 后端)。
 
 ## 许可
 
-暂未附加开源协议,默认保留所有权利。
+[Apache License 2.0](LICENSE)
