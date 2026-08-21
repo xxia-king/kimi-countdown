@@ -49,4 +49,16 @@ Tauri 2 + React + TypeScript(Rust 后端)。
 
 ## 许可
 
-[Apache License 2.0](LICENSE)
+[Apache License 2.0](LICENSE),Copyright 2026 金莉珊 (xxia-king)。
+
+## 作者
+
+**金莉珊律师**,浙江嘉瑞成律师事务所
+
+<https://jinlishan.com/>
+
+欢迎扫码添加微信交流
+
+<div align="center">
+<img src="assets/img/wechat-qr.jpg" width="180" alt="微信: jinlishan_">
+</div>
